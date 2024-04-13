@@ -11,7 +11,7 @@ def convert_ip4_address():
         unpacked_ip_addr = socket.inet_ntoa(packed_ip_addr)
 
         print(
-            f"IP Address: {ip_addr} => Packed: {hexlify(packed_ip_addr)},"
+            f"IP Address: {ip_addr} => Packed: {hexlify(packed_ip_addr)}, "
             f"Unpacked: {unpacked_ip_addr}"
         )
 
