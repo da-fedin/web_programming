@@ -20,4 +20,4 @@ pre-commit-install:
 # Run pre-commit hook
 .PHONY: pre-commit-run
 pre-commit-run:
-	.venv/bin/pre-commit run
+	.venv/bin/pre-commit run --all-files
