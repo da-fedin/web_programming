@@ -24,10 +24,15 @@ def multiconn_server(host: str, port: int) -> None:
 
         def accept_wrapper(sock):
             conn, addr = sock.accept()  # Should be ready to read
+
             print(f"Accepted connection from {addr}")
+
             conn.setblocking(False)
+
             data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"")
+
             events = selectors.EVENT_READ | selectors.EVENT_WRITE
+
             selector.register(conn, events, data=data)
 
         def service_connection(key, mask):
@@ -44,6 +49,7 @@ def multiconn_server(host: str, port: int) -> None:
                     print(f"Closing connection to {data.addr}")
 
                     selector.unregister(sock)
+
                     sock.close()
 
             if mask & selectors.EVENT_WRITE:
@@ -53,16 +59,22 @@ def multiconn_server(host: str, port: int) -> None:
                     sent = sock.send(data.outb)  # Should be ready to write
                     data.outb = data.outb[sent:]
 
+        # Start event loop
         try:
             while True:
+                # Get tuple for sockets (key, mask)
                 events = selector.select(timeout=None)
+
                 for key, mask in events:
                     if key.data is None:
                         accept_wrapper(key.fileobj)
+
                     else:
                         service_connection(key, mask)
+
         except KeyboardInterrupt:
             print("Caught keyboard interrupt, exiting")
+
         finally:
             selector.close()
 

@@ -4,15 +4,41 @@ import socket
 import selectors
 import types
 
+sel = selectors.DefaultSelector()
+messages = [b"Message 1 from client.", b"Message 2 from client."]
+
 HOST = "127.0.0.1"
 PORT = 65432
 
-selector = selectors.DefaultSelector()
-messages = [b"Message 1 from client.", b"Message 2 from client."]
 
+def multi_connection_client(
+    connection_host: str, connection_port: int, number_of_connections: int
+):
+    def start_connections(host, port, connections):
+        server_addr = (host, port)
 
-def multiconn_client(host: str, port: int, num_conns: int) -> None:
-    server_addr = (host, port)
+        for i in range(0, connections):
+            connection_id = i + 1
+
+            print(f"Starting connection {connection_id} to {server_addr}")
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            sock.setblocking(False)
+
+            sock.connect_ex(server_addr)
+
+            connection_events = selectors.EVENT_READ | selectors.EVENT_WRITE
+
+            data = types.SimpleNamespace(
+                connid=connection_id,
+                msg_total=sum(len(m) for m in messages),
+                recv_total=0,
+                messages=messages.copy(),
+                outb=b"",
+            )
+
+            sel.register(sock, connection_events, data=data)
 
     def service_connection(key, mask):
         sock = key.fileobj
@@ -29,7 +55,8 @@ def multiconn_client(host: str, port: int, num_conns: int) -> None:
             if not recv_data or data.recv_total == data.msg_total:
                 print(f"Closing connection {data.connid}")
 
-                selector.unregister(sock)
+                sel.unregister(sock)
+
                 sock.close()
 
         if mask & selectors.EVENT_WRITE:
@@ -42,28 +69,26 @@ def multiconn_client(host: str, port: int, num_conns: int) -> None:
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
 
-    for i in range(0, num_conns):
-        connid = i + 1
+    start_connections(connection_host, connection_port, number_of_connections)
 
-        print(f"Starting connection {connid} to {server_addr}")
+    try:
+        while True:
+            events = sel.select(timeout=1)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            if events:
+                for key, mask in events:
+                    service_connection(key, mask)
 
-        sock.setblocking(False)
+            # Check for a socket being monitored to continue.
+            if not sel.get_map():
+                break
 
-        sock.connect_ex(server_addr)
-
-        events = selectors.EVENT_READ | selectors.EVENT_WRITE
-
-        data = types.SimpleNamespace(
-            connid=connid,
-            msg_total=sum(len(m) for m in messages),
-            recv_total=0,
-            messages=messages.copy(),
-            outb=b"",
-        )
-
-        selector.register(sock, events, data=data)
+    except KeyboardInterrupt:
+        print("Caught keyboard interrupt, exiting")
+    finally:
+        sel.close()
 
 
-multiconn_client(host=HOST, port=PORT, num_conns=2)
+multi_connection_client(
+    connection_host=HOST, connection_port=PORT, number_of_connections=2
+)
