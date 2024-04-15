@@ -10,3 +10,5 @@ flake8==6.0.0
 # Removes unused imports and unused variables.
 autoflake==2.2.0
 # [code_style]-[END]
+
+ntplib==0.4.0

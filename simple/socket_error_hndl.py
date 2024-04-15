@@ -3,21 +3,23 @@ Create a few try-except code blocks and put one potential error type in each blo
 """
 import sys
 import socket
-import argparse
 
-# setup argument parsing
-parser = argparse.ArgumentParser(description="Socket Error Examples")
-parser.add_argument("--host", action="store", dest="host", required=False)
-parser.add_argument(
-    "--port", action="store", dest="port", type=int, required=False
-)
-parser.add_argument("--file", action="store", dest="file", required=False)
 
-given_args = parser.parse_args()
+# import argparse
 
-host = given_args.host
-port = given_args.port
-filename = given_args.file
+# # setup argument parsing
+# parser = argparse.ArgumentParser(description="Socket Error Examples")
+# parser.add_argument("--host", action="store", dest="host", required=False)
+# parser.add_argument(
+#     "--port", action="store", dest="port", type=int, required=False
+# )
+# parser.add_argument("--file", action="store", dest="file", required=False)
+#
+# given_args = parser.parse_args()
+#
+# host = given_args.host
+# port = given_args.port
+# filename = given_args.file
 
 
 # Create socket
@@ -49,7 +51,7 @@ def connect_socket(
 
 
 # Sending data
-def send_data_to_socket(my_socket: socket.socket) -> None:
+def send_data_to_socket(my_socket: socket.socket, filename: str) -> None:
     try:
         msg = f"GET {filename} HTTP/1.0\r\n\r\n"
         my_socket.sendall(msg.encode("utf-8"))
@@ -59,6 +61,7 @@ def send_data_to_socket(my_socket: socket.socket) -> None:
         sys.exit(1)
 
 
+# Receive data
 def receive_data_from_socket(my_socket: socket, chunk_size: int) -> None:
     while True:
         # Waiting to receive data from remote host
@@ -82,6 +85,8 @@ local_port = 8080
 
 created_socket = create_socket()
 
-connect_socket(created_socket, local_host, local_port)
+connect_socket(
+    created_socket, local_host, local_port
+)  # :TODO: connection refused error
 
 receive_data_from_socket(created_socket, chunk_size)
