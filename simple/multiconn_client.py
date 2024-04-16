@@ -1,17 +1,15 @@
-"""Multi-connection client"""
+"""
+Multi-connection client.
+Send defined amount of messages to server and receive echo.
+"""
 
 import socket
 import selectors
 import types
 
-selector = selectors.DefaultSelector()
-messages = [b"Message 1 from client.", b"Message 2 from client."]
-
-HOST = "127.0.0.1"
-PORT = 65432
-
 
 def start_connections(host: str, port: int, connections: int) -> None:
+    """Start connections"""
     # Set address to connect with
     server_addr = (host, port)
 
@@ -47,38 +45,58 @@ def start_connections(host: str, port: int, connections: int) -> None:
 
 
 def service_connection(key, mask: int) -> None:
+    """Service connection"""
     sock = key.fileobj
     data = key.data
 
+    # Check if there is a read event for socket
     if mask & selectors.EVENT_READ:
-        recv_data = sock.recv(1024)  # Should be ready to read
+        # Set maximum number of bytes to receive in a single call
+        max_bytes_in_call = 1024
 
+        # Receive defined amount of data
+        recv_data = sock.recv(max_bytes_in_call)
+
+        # Check if there is a data in call
         if recv_data:
             print(f"Received {recv_data!r} from connection {data.connid}")
 
+            # Count requests
             data.recv_total += len(recv_data)
 
+        # Check if there is no data or
+        # amount of data received is equal to the total expected message size
         if not recv_data or data.recv_total == data.msg_total:
             print(f"Closing connection {data.connid}")
 
+            # Unregister socket from selector
             selector.unregister(sock)
 
+            # Close socket
             sock.close()
 
+    # Check if there is a write event for socket
     if mask & selectors.EVENT_WRITE:
+        # Check if there is no messages yet
         if not data.outb and data.messages:
+            # Remove first item of 'messages' list and assign its value to 'data.outb' field
             data.outb = data.messages.pop(0)
 
+        # Check if there is some message to send
         if data.outb:
             print(f"Sending {data.outb!r} to connection {data.connid}")
 
-            sent = sock.send(data.outb)  # Should be ready to write
+            # Send message to server
+            sent = sock.send(data.outb)
+
+            # Add message sent to list of sent messages
             data.outb = data.outb[sent:]
 
 
-def multi_connection_client(
+def start_multi_connection_client(
     connection_host: str, connection_port: int, number_of_connections: int
 ) -> None:
+    """Multi-connection client"""
     start_connections(
         host=connection_host,
         port=connection_port,
@@ -87,9 +105,8 @@ def multi_connection_client(
 
     try:
         while True:
-            events = selector.select(
-                timeout=1
-            )  # list of tuples like (key, mask)
+            # Set list of tuples like (key, mask) by invoking select() system call
+            events = selector.select(timeout=1)
 
             if events:
                 for key, mask in events:
@@ -109,7 +126,19 @@ def multi_connection_client(
         selector.close()
 
 
+# Set address for connection
+HOST = "127.0.0.1"
+PORT = 65432
+
+# Set selector for events during connection
+selector = selectors.DefaultSelector()
+
+# Set message list to be sent to server (as a sequence of bytes)
+messages = [b"Message 1 from client.", b"Message 2 from client."]
+
 # Run script
-multi_connection_client(
-    connection_host=HOST, connection_port=PORT, number_of_connections=2
+start_multi_connection_client(
+    connection_host=HOST,
+    connection_port=PORT,
+    number_of_connections=len(messages),
 )
