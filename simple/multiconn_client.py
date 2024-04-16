@@ -96,22 +96,26 @@ def service_connection(key, mask: int) -> None:
 def start_multi_connection_client(
     connection_host: str, connection_port: int, number_of_connections: int
 ) -> None:
-    """Multi-connection client"""
+    """Start the multi-connection client"""
     start_connections(
         host=connection_host,
         port=connection_port,
         connections=number_of_connections,
     )
 
+    # Start listening
     try:
         while True:
             # Set list of tuples like (key, mask) by invoking select() system call
             events = selector.select(timeout=1)
 
+            # Check for event
             if events:
                 for key, mask in events:
                     # key - represent the registered file object along with associated metadata
                     # mask - integer representing the events that have occurred on the file object
+
+                    # Serve connection
                     service_connection(key=key, mask=mask)
 
             # If mappings dictionary is empty, there are no registered file objects
@@ -122,6 +126,7 @@ def start_multi_connection_client(
     except KeyboardInterrupt:
         print("Caught keyboard interrupt, exiting")
 
+    # Close
     finally:
         selector.close()
 
@@ -136,7 +141,7 @@ selector = selectors.DefaultSelector()
 # Set message list to be sent to server (as a sequence of bytes)
 messages = [b"Message 1 from client.", b"Message 2 from client."]
 
-# Run script
+# Run client
 start_multi_connection_client(
     connection_host=HOST,
     connection_port=PORT,
