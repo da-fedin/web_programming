@@ -45,7 +45,7 @@ def start_connections(host: str, port: int, connections: int) -> None:
 
 
 def service_connection(key, mask: int) -> None:
-    """Service connection"""
+    """Serve the connection"""
     sock = key.fileobj
     data = key.data
 
@@ -139,7 +139,7 @@ PORT = 65432
 selector = selectors.DefaultSelector()
 
 # Set message list to be sent to server (as a sequence of bytes)
-messages = [b"Message 1 from client.", b"Message 2 from client."]
+messages = [b"Message 1 from client. ", b"Message 2 from client. "]
 
 # Run client
 start_multi_connection_client(
