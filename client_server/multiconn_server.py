@@ -65,6 +65,7 @@ def service_connection(key, mask):
 def start_multi_connection_server(host: str, port: int) -> None:
     """Start the multi connection server"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        # Associate a socket with a specific network address
         server_socket.bind((host, port))
 
         server_socket.listen()
