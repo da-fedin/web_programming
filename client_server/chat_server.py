@@ -1,5 +1,6 @@
 """Chat server that can handle several hundred or a large number
 of client connections."""
+import argparse
 import select
 import socket
 import sys
@@ -9,6 +10,49 @@ import struct
 
 SERVER_HOST = "localhost"
 CHAT_SERVER_NAME = "server"
+
+
+def send(channel, *args):
+    """Send data over a network channel"""
+    # Serialize the variable-length arguments passed to the function
+    buffer = pickle.dumps(args)
+
+    # Calculate serialized data size and convert to network byte order
+    value = socket.htonl(len(buffer))
+
+    # Pack message size into a binary representation suitable for network transmission
+    size = struct.pack("L", value)
+
+    # Send packed message size over the network channel
+    channel.send(size)
+
+    # Send serialized data over the network channel
+    channel.send(buffer)
+
+
+def receive(channel):
+    """Receive a message from a network channel"""
+    # Calculate the size of the message size field in bytes as unsigned long integer
+    size = struct.calcsize("L")
+
+    # Receive the message size field from the network channel
+    size = channel.recv(size)
+
+    try:
+        # Unpack received message size field, convert the size from network byte order to host one
+        size = socket.ntohl(struct.unpack("L", size)[0])
+
+    except struct.error:  # as error:
+        return ""
+
+    # Store the received message data
+    buf = ""
+
+    # Loop that continues until the length of the received data equals expected message size
+    while len(buf) < size:
+        buf = channel.recv(size - len(buf))
+
+    return pickle.loads(buf)[0]
 
 
 class ChatServer:
@@ -33,9 +77,9 @@ class ChatServer:
         self.server.listen(backlog)
 
         # Set up a signal handler to catch keyboard interrupts
-        signal.signal(signal.SIGINT, self.sighandler)
+        signal.signal(signal.SIGINT, self.signal_handler)
 
-    def sighandler(self, signum, frame):
+    def signal_handler(self, signum, frame):
         """Clean up client outputs"""
         # Close the server
         print("Shutting down server...")
@@ -225,51 +269,36 @@ class ChatClient:
                             sys.stdout.flush()
 
             except KeyboardInterrupt:
-                print(" Client interrupted. " "")
+                print(" Client interrupted.")
 
                 self.sock.close()
 
                 break
 
 
-def send(channel, *args):
-    """Send data over a network channel"""
-    # Serialize the variable-length arguments passed to the function
-    buffer = pickle.dumps(args)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Socket ServerExample with Select"
+    )
 
-    # Calculate serialized data size and convert to network byte order
-    value = socket.htonl(len(buffer))
+    parser.add_argument("--name", action="store", dest="name", required=True)
 
-    # Pack message size into a binary representation suitable for network transmission
-    size = struct.pack("L", value)
+    parser.add_argument(
+        "--port", action="store", dest="port", type=int, required=True
+    )
 
-    # Send packed message size over the network channel
-    channel.send(size)
+    given_args = parser.parse_args()
 
-    # Send serialized data over the network channel
-    channel.send(buffer)
+    port = given_args.port
 
+    name = given_args.name
 
-def receive(channel):
-    """Receive a message from a network channel"""
-    # Calculate the size of the message size field in bytes as unsigned long integer
-    size = struct.calcsize("L")
+    if name == CHAT_SERVER_NAME:
+        server = ChatServer(port)
 
-    # Receive the message size field from the network channel
-    size = channel.recv(size)
+        server.run()
 
-    try:
-        # Unpack received message size field, convert the size from network byte order to host one
-        size = socket.ntohl(struct.unpack("L", size)[0])
-
-    except struct.error:  # as error:
-        return ""
-
-    # Store the received message data
-    buf = ""
-
-    # Loop that continues until the length of the received data equals expected message size
-    while len(buf) < size:
-        buf = channel.recv(size - len(buf))
-
-    return pickle.loads(buf)[0]
+    else:
+        client = ChatClient(name=name, port=port)
+        sys.stdout.write("Starting client server")
+        client.run()
