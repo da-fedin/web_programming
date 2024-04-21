@@ -1,6 +1,6 @@
 # Python network programming.
 
-## Multi-user chat server.
+## Multi-user chat server with socket programming.
 
 ## Build:
 
